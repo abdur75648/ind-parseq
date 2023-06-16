@@ -1,0 +1,10 @@
+__pycache__/*
+**/__pycache__/*
+.env
+*.ipynb
+**/.DS_Store
+outputs/*
+config/*
+*.txt
+strhub.egg-info/*
+parseq_env/*

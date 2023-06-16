@@ -1,0 +1,56 @@
+defaults:
+  - _self_
+  - model: parseq
+  - dataset: synth
+
+model:
+  _convert_: all
+  img_size: [ 32, 128 ] # [32,512] for line # [ 32, 128 ] for word
+  max_label_length: 30 # 100 for line # 30 for word
+  # The ordering in charset_file matters. It determines the token IDs assigned to each character
+  charset_file: TeluguGlyphs.txt
+  batch_size: 64
+  weight_decay: 0.0
+  warmup_pct: 0.075  # equivalent to 1.5 epochs of warm up
+
+data:
+  _target_: strhub.data.module.SceneTextDataModule
+  root_dir: ../scratch/data/Telugu/LMDB/
+  train_dir: train
+  batch_size: ${model.batch_size}
+  img_size: ${model.img_size}
+  charset_file: ${model.charset_file}
+  #charset_train: ${model.charset_train}
+  #charset_test: ${model.charset_train}
+  max_label_length: ${model.max_label_length}
+  remove_whitespace: true
+  normalize_unicode: false
+  augment: true
+  num_workers: 32
+  flip_left_right: true
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  _convert_: all
+  val_check_interval: 100
+  #max_steps: 169680  # 20 epochs x 8484 steps (for batch size = 384, real data)
+  max_epochs: 100
+  gradient_clip_val: 20
+  #gpus: 6 #2
+  devices: [0]
+  accelerator: "gpu"
+
+ckpt_path: null
+pretrained: null
+learning_rate: null
+trainedmodel: null
+remove_head: false
+
+hydra:
+  output_subdir: config
+  run:
+    #dir: outputs/${model.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    dir: outputs/${model.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${model.name}/${now:%Y-%m-%d}_${now:%H-%M-%S}
+    subdir: ${hydra.job.override_dirname}
