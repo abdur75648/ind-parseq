@@ -8,7 +8,7 @@ config/*
 *.txt
 strhub.egg-info/*
 parseq_env/*
-bad_samples/*
+bad_samples*
 test_outputs/*
 Character-wise-results.csv
 Char-report.csv

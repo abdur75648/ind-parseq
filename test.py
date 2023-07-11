@@ -69,8 +69,9 @@ def main(args,kwargs):
     ned = 0
     weighted_ED = 0
     label_length = 0
-    
     num_correct=0
+    if args.visualize:
+        vis_num=0
     for batch in tqdm(test_loader):
         imgs, labels = batch
         imgs = imgs.to(args.device)
@@ -110,7 +111,8 @@ def main(args,kwargs):
             
             if args.visualize:
                 if acc<args.threshold:
-                    new_file = str(i)+".jpg"
+                    vis_num+=1
+                    new_file = str(vis_num)+".jpg"
                     img = img*0.5 + 0.5 # Undo normalisation
                     transform = T.ToPILImage()
                     img = transform(img)
@@ -133,6 +135,7 @@ def main(args,kwargs):
     print("Outputs written at ", os.path.join("test_outputs",date_time+".txt"))
     with open(os.path.join("test_outputs",date_time+".txt"),"a",encoding="utf-8") as file:
         file.write("CRR Accuracy: " + str(round(mean_ned,4))+"%\n")
+        file.write("Weighted CRR Accuracy: " + str(round(weighted_mean_ned,4))+"%\n")
         file.write("WRR Accuracy: " + str(round(100*num_correct/total,4))+"%\n")
     plt.hist(accuracy_arr)
     plt.savefig(os.path.join("test_outputs",date_time+".png"))

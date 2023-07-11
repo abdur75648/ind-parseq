@@ -204,6 +204,9 @@ def main():
     ned = 0
     weighted_ED = 0
     label_length = 0
+    num_correct=0
+    if args.visualize:
+        vis_num=0
     
     # Calculate character-wise accuracy between the two strings
     total_occurence = {}
@@ -224,8 +227,10 @@ def main():
         pred, prob = model.tokenizer.decode(prob)
         pred = pred[0]
         pred = model.charset_adapter(pred)
-        gt_no_spaces = str(gt).replace(" ","")
-        pred_no_spaces = str(pred).replace(" ","")
+        gt_no_spaces = str(gt)#.replace(" ","")
+        pred_no_spaces = str(pred)#.replace(" ","")
+        if gt_no_spaces==pred_no_spaces:
+                num_correct+=1
         total += 1
         if len(gt_no_spaces) == 0 or len(pred_no_spaces) == 0:
             ED = 0
@@ -254,7 +259,8 @@ def main():
         
         if args.visualize:
             if acc<args.threshold:
-                new_file = str(i)+".jpg"
+                vis_num+=1
+                new_file = str(vis_num)+".jpg"
                 img = img*0.5 + 0.5 # Undo normalisation
                 transform = T.ToPILImage()
                 img = transform(img)
@@ -271,10 +277,12 @@ def main():
 
     print("Accuracy: ", mean_ned)
     print("Weighted Accuracy: ", weighted_mean_ned)
+    print("WRR: ", str(round(100*num_correct/total,2)))
     print("Outputs written at ", os.path.join(args.out_dir,date_time+".txt"))
     with open(os.path.join(args.out_dir,date_time+".txt"),"a",encoding="utf-8") as file:
-        file.write("Accuracy: " + str(mean_ned)+"\n")
-        file.write("Weighted Accuracy: " + str(weighted_mean_ned))
+        file.write("CRR Accuracy: " + str(round(mean_ned,4))+"%\n")
+        file.write("Weighted CRR Accuracy: " + str(round(weighted_mean_ned,4))+"%\n")
+        file.write("WRR Accuracy: " + str(round(100*num_correct/total,4))+"%\n")
     plt.hist(accuracy_arr)
     plt.savefig(os.path.join(args.out_dir,date_time+".png"))
     print("Histogram saved at ",os.path.join(args.out_dir,date_time+".png"))
