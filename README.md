@@ -14,6 +14,9 @@
 ## Test
 ```CUDA_AVAILABLE_DEVICES=0 python3 test.py  --trained_dir outputs/parseq/2022-09-19_11-38-16/ --model_weights outputs/parseq/2022-09-19_11-38-16/checkpoints/last.ckpt  --data_root data/train/real_distorted/ --threshold 80 --visualize```
 
+## Chracter-wise testing
+```python3 char_test.py --trained_dir outputs/parseq/2023-06-19_02-48-58/ --model_weights outputs/parseq/2023-06-19_02-48-58/checkpoints/epoch\=91-step\=36600-val_accuracy\=86.5548-val_NED\=96.4378.ckpt --data_root ../scratch/data/Telugu/LMDB/val/  --out_dir ../scratch/parseq_Telugu_quality1 --visualize --threshold 90```
+
 ### Configs To Take Care of
 * If langauge/dataset changes:
     * data.root_dir
@@ -25,7 +28,7 @@
     * model.img_size
     * max_label_length
 * If num_GPU>1:
-    * traine.devices
+    * trainer.devices
 
 ## Setup For HPC-IITD
 * ```module load apps/pytorch/1.10.0/gpu/intelpython3.7```
@@ -38,3 +41,6 @@ Activate the venv
 
 Install Libraries
 * ```pip install -r requirements.txt```
+
+# HPC Finetuning
+```CUDA_AVAILABLE_DEVICES=0 python3 train.py trainer.devices=[0] dataset=real  trainedmodel=outputs/parseq/2023-07-06_13-12-11/checkpoints/last.ckpt model.batch_size=512 model.lr=1e-5```

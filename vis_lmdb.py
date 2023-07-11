@@ -13,8 +13,6 @@ with env.begin(write=False) as txn:
     nSamples = int(txn.get('num-samples'.encode()))
     print("Number of samples: ",nSamples)
 
-exit()
-
 def get_item(index):
     assert index < nSamples, 'index range error'
     with env.begin(write=False) as txn:

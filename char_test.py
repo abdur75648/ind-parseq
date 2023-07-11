@@ -143,6 +143,8 @@ def main():
     parser.add_argument('--trained_dir', required=True ,help="Model checkpoint (like outputs/parseq/2022-09-17_16-52-32)")
     parser.add_argument('--model_weights', type=str,default=None)
     parser.add_argument('--data_root', default='/DATA/parseq/val')
+    parser.add_argument('--out_dir',default="test_outputs")
+    parser.add_argument('--flip_left_right',type=bool,default=False)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=16)
     parser.add_argument('--visualize', action='store_true')
@@ -150,12 +152,12 @@ def main():
     parser.add_argument('--device', default='cuda')
     args, unknown = parser.parse_known_args()
     kwargs = parse_model_args(unknown)
-    os.makedirs("test_outputs",exist_ok=True)
+    os.makedirs(args.out_dir,exist_ok=True)
 
     date_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    with open(os.path.join("test_outputs",date_time+"_pred.txt"),"w",encoding="utf-8") as file:
+    with open(os.path.join(args.out_dir,date_time+"_pred.txt"),"w",encoding="utf-8") as file:
         file.write("path\tED\tpred\n")
-    with open(os.path.join("test_outputs",date_time+"_gt.txt"),"w",encoding="utf-8") as file:
+    with open(os.path.join(args.out_dir,date_time+"_gt.txt"),"w",encoding="utf-8") as file:
         file.write("path\tED\tlabel\n")
     if args.visualize:
         if os.path.exists("bad_samples"):
@@ -167,15 +169,7 @@ def main():
         bad_file_gt = "bad_samples/log_gt.txt"
         with open(bad_file_gt,"w",encoding="utf-8") as file:
             file.write("path\tED\tlabel\n")
-    
-    with open("UrduGlyphs.txt","r",encoding="utf-8") as file:
-       lines = file.readlines()
-    chars=[]
-    for line in lines:
-       chars.append(line.strip("\n"))
-    # chars.append(" ")
 
-    #kwargs.update({'charset_test': charset_test})
     print(f'Additional keyword arguments: {kwargs}')
 
     print("Loading trained model from ", str(args.trained_dir)," ...")
@@ -192,7 +186,13 @@ def main():
 
     print("Model HPs: ",hp)
     
-    datamodule = SceneTextDataModule(args.data_root, '_unused_', hp.img_size, hp.max_label_length, "UrduGlyphs.txt", args.batch_size, args.num_workers, False,False,False, rotation=0)
+    with open(hp.charset_file,"r",encoding="utf-8") as file:
+       lines = file.readlines()
+    chars=[]
+    for line in lines:
+       chars.append(line.strip("\n"))
+    
+    datamodule = SceneTextDataModule(args.data_root, '_unused_', hp.img_size, hp.max_label_length, hp.charset_file, args.batch_size, args.num_workers, False,False,False, rotation=0, flip_left_right=args.flip_left_right)
 
     test_dataset = datamodule.test_dataloaders().dataset
 
@@ -211,8 +211,9 @@ def main():
 
     # Add all alphabets to total_occurence with value 0
     for char in chars:
-        total_occurence[char] = 0
-        correct_occurence[char] = 0
+        if char!="_": # used to align strings
+            total_occurence[char] = 0
+            correct_occurence[char] = 0
     
     for i,(img, gt) in enumerate(tqdm(test_dataset)): #, desc=f'{name:>{max_width}}'):
         img_squeezed = img.unsqueeze(0)
@@ -235,19 +236,20 @@ def main():
         
         # Count total occurence of each alphabet in both strings
         for i in range(len(gt_aligned)):
-            total_occurence[gt_aligned[i]] += 1
-            # Now check if the character is correct in the prediction
-            if gt_aligned[i] == pred_aligned[i]:
-                correct_occurence[gt_aligned[i]] += 1
+            if gt_aligned[i]!="_": # used to align strings
+                total_occurence[gt_aligned[i]] += 1
+                # Now check if the character is correct in the prediction
+                if gt_aligned[i] == pred_aligned[i]:
+                    correct_occurence[gt_aligned[i]] += 1
         
         acc = (1 - float(ED))*100
         accuracy_arr.append(acc)
         ned += ED
         weighted_ED += ED*len(gt)
         label_length += len(gt)
-        with open(os.path.join("test_outputs",date_time+"_pred.txt"),"a",encoding="utf-8") as file:
+        with open(os.path.join(args.out_dir,date_time+"_pred.txt"),"a",encoding="utf-8") as file:
             file.write("Number-" + str(i)+"\t|\t"+str(acc)+"\t|\t"+pred+"\t|\n")
-        with open(os.path.join("test_outputs",date_time+"_gt.txt"),"a",encoding="utf-8") as file:
+        with open(os.path.join(args.out_dir,date_time+"_gt.txt"),"a",encoding="utf-8") as file:
             file.write("Number-" + str(i)+"\t|\t"+str(acc)+"\t|\t"+gt+"\t|\n")
         
         if args.visualize:
@@ -256,7 +258,8 @@ def main():
                 img = img*0.5 + 0.5 # Undo normalisation
                 transform = T.ToPILImage()
                 img = transform(img)
-                img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+                if args.flip_left_right:
+                    img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
                 img.save(os.path.join("bad_samples",new_file))
                 with open(bad_file_pred,"a",encoding="utf-8") as f:
                     f.write(new_file+"\t|\t"+str(acc)+"\t|\t"+pred+"\t|\n")
@@ -268,13 +271,13 @@ def main():
 
     print("Accuracy: ", mean_ned)
     print("Weighted Accuracy: ", weighted_mean_ned)
-    print("Outputs written at ", os.path.join("test_outputs",date_time+".txt"))
-    with open(os.path.join("test_outputs",date_time+".txt"),"a",encoding="utf-8") as file:
+    print("Outputs written at ", os.path.join(args.out_dir,date_time+".txt"))
+    with open(os.path.join(args.out_dir,date_time+".txt"),"a",encoding="utf-8") as file:
         file.write("Accuracy: " + str(mean_ned)+"\n")
         file.write("Weighted Accuracy: " + str(weighted_mean_ned))
     plt.hist(accuracy_arr)
-    plt.savefig(os.path.join("test_outputs",date_time+".png"))
-    print("Histogram saved at ",os.path.join("test_outputs",date_time+".png"))
+    plt.savefig(os.path.join(args.out_dir,date_time+".png"))
+    print("Histogram saved at ",os.path.join(args.out_dir,date_time+".png"))
     
     Accuracy = {}
     for char in chars:
@@ -284,19 +287,19 @@ def main():
     sorted_accuracy = sorted(Accuracy.items(), key=lambda x: x[1], reverse=True)
     
     import pandas as pd
-    df = pd.DataFrame(columns=["Alphabet", "Accuracy"])
+    df = pd.DataFrame(columns=["Alphabet", "Accuracy","Occurence"])
     for key, value in sorted_accuracy:
-        if value != 0:
-            print(f"Accuracy of {key}: {value:.2f}")
-            df = df.append({"Alphabet": key, "Accuracy": value}, ignore_index=True)
+        # if value != 0:
+        # print(f"Accuracy of {key}: {value:.2f}")
+        df = df.append({"Alphabet": key, "Accuracy": value,"Occurence": total_occurence[key]}, ignore_index=True)
     
-    df.to_csv("Character-wise-accuracy.csv", index=False)
+    df.to_csv("Character-wise-results.csv", index=False)
     
-    plt.figure(figsize=(10, 5))
-    plt.bar(df["Alphabet"], df["Accuracy"])
-    plt.xlabel("Alphabet")
-    plt.ylabel("Accuracy")
-    plt.savefig("Character-wise-accuracy.png")
+    # plt.figure(figsize=(10, 5))
+    # plt.bar(df["Alphabet"], df["Accuracy"])
+    # plt.xlabel("Alphabet")
+    # plt.ylabel("Accuracy")
+    # plt.savefig("Character-wise-accuracy.png")
     
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ def main():
     parser.add_argument('--model_weights', type=str,default=None)
     parser.add_argument('--image_path',  type=str,required=True)
     parser.add_argument('--device', default='cuda')
-    parser.add_argument('--no_flip', action='store_true',)
+    parser.add_argument('--flip_left_right',type=bool,default=False)
     parser.add_argument('--result_path',  type=str, default='read_output.txt')
     args, unknown = parser.parse_known_args() 
     kwargs = parse_model_args(unknown)
@@ -50,7 +50,7 @@ def main():
     
     for image_path in tqdm(images_to_read):
         image = Image.open(image_path).convert('RGB')
-        if not args.no_flip:
+        if args.flip_left_right:
             image = image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         image = img_transform(image).unsqueeze(0).to(args.device)
         p = model(image).softmax(-1)

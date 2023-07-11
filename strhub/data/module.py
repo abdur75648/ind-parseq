@@ -59,7 +59,7 @@ class SceneTextDataModule(pl.LightningDataModule):
     def __init__(self, root_dir: str, train_dir: str, img_size: Sequence[int], max_label_length: int,
                  charset_file: str, batch_size: int, num_workers: int, augment: bool,
                  remove_whitespace: bool = True, normalize_unicode: bool = True,
-                 min_image_dim: int = 0, rotation: int = 0, collate_fn: Optional[Callable] = None, flip_left_right=True):
+                 min_image_dim: int = 0, rotation: int = 0, collate_fn: Optional[Callable] = None, flip_left_right=False):
         super().__init__()
         self.root_dir = root_dir
         self.train_dir = train_dir

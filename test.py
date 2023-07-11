@@ -55,7 +55,7 @@ def main(args,kwargs):
 
     print("Model HPs: ",hp)
     
-    datamodule = SceneTextDataModule(args.data_root, '_unused_', hp.img_size, hp.max_label_length, "UrduGlyphs.txt", args.batch_size, args.num_workers, False,False,False, rotation=0)
+    datamodule = SceneTextDataModule(args.data_root, '_unused_', hp.img_size, hp.max_label_length, hp.charset_file, args.batch_size, args.num_workers, False,False,False, rotation=0,flip_left_right=args.flip_left_right)
 
     test_dataset = datamodule.test_dataloaders().dataset
 
@@ -86,7 +86,7 @@ def main(args,kwargs):
     #     pred, prob = model.tokenizer.decode(prob)
     #     pred = pred[0]
     
-        for pred, gt in zip(preds, labels):
+        for i, (img, pred, gt) in enumerate(zip(imgs, preds, labels)):
             pred = model.charset_adapter(pred)
             gt_no_spaces = str(gt)#.replace(" ","")
             pred_no_spaces = str(pred)#.replace(" ","")
@@ -108,18 +108,19 @@ def main(args,kwargs):
             # with open(os.path.join("test_outputs",date_time+"_gt.txt"),"a",encoding="utf-8") as file:
             #     file.write("Number-" + str(i)+"\t|\t"+str(acc)+"\t|\t"+gt+"\t|\n")
             
-            # if args.visualize:
-            #     if acc<args.threshold:
-            #         new_file = str(i)+".jpg"
-            #         img = img*0.5 + 0.5 # Undo normalisation
-            #         transform = T.ToPILImage()
-            #         img = transform(img)
-            #         img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            #         img.save(os.path.join("bad_samples",new_file))
-            #         with open(bad_file_pred,"a",encoding="utf-8") as f:
-            #             f.write(new_file+"\t|\t"+str(acc)+"\t|\t"+pred+"\t|\n")
-            #         with open(bad_file_gt,"a",encoding="utf-8") as f:
-            #             f.write(new_file+"\t|\t"+str(acc)+"\t|\t"+gt+"\t|\n")
+            if args.visualize:
+                if acc<args.threshold:
+                    new_file = str(i)+".jpg"
+                    img = img*0.5 + 0.5 # Undo normalisation
+                    transform = T.ToPILImage()
+                    img = transform(img)
+                    if args.flip_left_right:
+                        img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+                    img.save(os.path.join("bad_samples",new_file))
+                    with open(bad_file_pred,"a",encoding="utf-8") as f:
+                        f.write(new_file+"\t|\t"+str(acc)+"\t|\t"+pred+"\t|\n")
+                    with open(bad_file_gt,"a",encoding="utf-8") as f:
+                        f.write(new_file+"\t|\t"+str(acc)+"\t|\t"+gt+"\t|\n")
     
     # print("Total: ", total)
     # print("NED: ", ned)
@@ -128,11 +129,11 @@ def main(args,kwargs):
 
     print("CRR: ", mean_ned)
     print("Weighted CRR: ", weighted_mean_ned)
-    print("WRR: ", str(round(100*num_correct/total,2)),"%")
+    print("WRR: ", str(round(100*num_correct/total,2)))
     print("Outputs written at ", os.path.join("test_outputs",date_time+".txt"))
     with open(os.path.join("test_outputs",date_time+".txt"),"a",encoding="utf-8") as file:
-        file.write("Accuracy: " + str(mean_ned)+"\n")
-        file.write("Weighted Accuracy: " + str(weighted_mean_ned))
+        file.write("CRR Accuracy: " + str(round(mean_ned,4))+"%\n")
+        file.write("WRR Accuracy: " + str(round(100*num_correct/total,4))+"%\n")
     plt.hist(accuracy_arr)
     plt.savefig(os.path.join("test_outputs",date_time+".png"))
     print("Histogram saved at ",os.path.join("test_outputs",date_time+".png"))
@@ -144,6 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_root', default='/DATA/parseq/val')
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--num_workers', type=int, default=16)
+    parser.add_argument('--flip_left_right',type=bool,default=False)
     parser.add_argument('--visualize', action='store_true')
     parser.add_argument('--threshold', type=int, default=80)
     parser.add_argument('--device', default='cuda')
